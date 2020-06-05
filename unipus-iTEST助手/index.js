@@ -6,10 +6,10 @@
 // @author       simonkimi
 // @match        https://itestcloud.unipus.cn/itest-api/itest/s/answer/**
 // @grant        none
+//@require       https://cdn.bootcdn.net/ajax/libs/blueimp-md5/2.16.0/js/md5.min.js
 // ==/UserScript==
 (async () => {
     'use strict';
-    document.write("<script type='text/javascript' src='http://www.veryhuo.com/uploads/Common/js/jQuery.md5.js'></script>");
     await delay(2000);
     initCss();
     debug();
@@ -97,7 +97,7 @@
         const trans_salt = (new Date).getTime();
         const {appid, key} = getBaiduAPIKey()
         const trans_str = appid + context_list + trans_salt + key;
-        const trans_sign = $.md5(trans_str);
+        const trans_sign = md5(trans_str);
 
         for (let i=0; i<5; i++) {
             const data = await translateAjaxApi({
