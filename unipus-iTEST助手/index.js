@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         unipus iTEST助手
 // @namespace    http://blog.z31.xyz/
-// @version      2.0
+// @version      2.1.1
 // @description  自动翻译文章题目材料, 解析听力材料无限听, 内置翻译助手英汉互译, 解除切屏限制, 解除右键菜单与划词限制
 // @author       simonkimi
-// @match        https://itestcloud.unipus.cn/itest-api/itest/s/answer/**
+// @match        *://itestcloud.unipus.cn/itest-api/itest/s/answer/**
 // @grant        none
-//@require       https://cdn.bootcdn.net/ajax/libs/blueimp-md5/2.16.0/js/md5.min.js
+// @require      https://cdn.staticfile.org/blueimp-md5/2.16.0/js/md5.min.js
 // ==/UserScript==
 (async () => {
     'use strict';
@@ -63,8 +63,6 @@
             })
         }
     }
-
-
 
 
     async function translateAjaxApi(obj) {
@@ -498,6 +496,4 @@
         const $float = $('.sk-float-container');
         $float.css('display', $float.css('display') === 'none'? 'block': 'none')
     })
-
-
 })()
