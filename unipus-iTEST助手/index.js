@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unipus iTEST助手
 // @namespace    http://blog.z31.xyz/
-// @version      2.1.1
+// @version      2.1.2
 // @description  自动翻译文章题目材料, 解析听力材料无限听, 内置翻译助手英汉互译, 解除切屏限制, 解除右键菜单与划词限制
 // @author       simonkimi
 // @match        *://itestcloud.unipus.cn/itest-api/itest/s/answer/**
@@ -23,7 +23,7 @@
         if (window.onblur !== null) {
             window.onblur = null;
         }
-    }, 5 * 5000)
+    }, 5 * 1000)
 
     /**
      * 是否为本地网页, 解除本地网页限制
@@ -92,12 +92,11 @@
      * @returns {Promise<unknown>}
      */
     async function translateAPI(context_list, from, to) {
-        const trans_salt = (new Date).getTime();
-        const {appid, key} = getBaiduAPIKey()
-        const trans_str = appid + context_list + trans_salt + key;
-        const trans_sign = md5(trans_str);
-
         for (let i=0; i<5; i++) {
+            const trans_salt = (new Date).getTime();
+            const {appid, key} = getBaiduAPIKey()
+            const trans_str = appid + context_list + trans_salt + key;
+            const trans_sign = md5(trans_str);
             const data = await translateAjaxApi({
                 q: context_list,
                 from,
@@ -121,6 +120,7 @@
                     throw new Error(`错误代码${data.error_code} 信息:${errmsg[data.error_code.toString()]}`)
                 } else {
                     await delay(1000);
+                    continue
                 }
             }
             return data.trans_result;
