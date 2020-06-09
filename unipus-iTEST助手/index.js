@@ -1,35 +1,48 @@
 // ==UserScript==
 // @name         unipus iTEST助手
 // @namespace    http://blog.z31.xyz/
-// @version      2.1.2
+// @version      2.1.4
 // @description  自动翻译文章题目材料, 解析听力材料无限听, 内置翻译助手英汉互译, 解除切屏限制, 解除右键菜单与划词限制
 // @author       simonkimi
 // @match        *://itestcloud.unipus.cn/itest-api/itest/s/answer/**
+// @match        *://*/*
 // @grant        none
 // @require      https://cdn.staticfile.org/blueimp-md5/2.16.0/js/md5.min.js
 // ==/UserScript==
 (async () => {
     'use strict';
     await delay(2000);
-    initCss();
-    debug();
-    disableSelect();
-    singleSelect();
-    select10from15();
-    article();
-    articleChoice();
-    listenTest();
-    setInterval(function () {
-        if (window.onblur !== null) {
-            window.onblur = null;
-        }
-    }, 5 * 1000)
+    if (isItest()) {
+        initCss();
+        debug();
+        disableSelect();
+        singleSelect();
+        select10from15();
+        article();
+        articleChoice();
+        listenTest();
+        setInterval(function () {
+            if (window.onblur !== null) {
+                window.onblur = null;
+            }
+        }, 5 * 1000)
+    }
+
+
+    /**
+     * 判断是否为Itest平台, 为了防止部分学校定制
+     * @returns {boolean}
+     */
+    function isItest() {
+        return document.title.indexOf("iTEST") !== -1 && document.getElementById('all-content') !== null;
+    }
+
 
     /**
      * 是否为本地网页, 解除本地网页限制
      */
     function debug() {
-        if (window.location.href.indexOf("itestcloud.unipus.cn") === -1) {
+        if (window.location.href.indexOf("localhost") !== -1) {
             $('.goup').removeClass('dis').on('click', function () {
                 $('.itest-ques-set').each(function () {
                     const $this = $(this);
@@ -65,6 +78,11 @@
     }
 
 
+    /**
+     * 封装的翻译api
+     * @param obj
+     * @returns {Promise<unknown>}
+     */
     async function translateAjaxApi(obj) {
         return new Promise((resolve, reject) => {
             $.ajax({
@@ -72,7 +90,7 @@
                 async: false,
                 url: "https://api.fanyi.baidu.com/api/trans/vip/translate",
                 dataType: "jsonp",
-                data: {...obj},
+                data: obj,
                 success: function (data) {
                     resolve(data)
                 },
@@ -92,11 +110,12 @@
      * @returns {Promise<unknown>}
      */
     async function translateAPI(context_list, from, to) {
-        for (let i=0; i<5; i++) {
-            const trans_salt = (new Date).getTime();
-            const {appid, key} = getBaiduAPIKey()
-            const trans_str = appid + context_list + trans_salt + key;
-            const trans_sign = md5(trans_str);
+        const trans_salt = (new Date).getTime();
+        const {appid, key} = getBaiduAPIKey()
+        const trans_str = appid + context_list + trans_salt + key;
+        const trans_sign = md5(trans_str);
+
+        for (let i = 0; i < 5; i++) {
             const data = await translateAjaxApi({
                 q: context_list,
                 from,
@@ -129,10 +148,17 @@
         throw new Error("请求过于频繁");
     }
 
+    /**
+     * 返回百度翻译的appid的, 本来打算用户自定义, 最后懒得搞了
+     * @returns {{appid: string, key: string}}
+     */
     function getBaiduAPIKey() {
         return {appid: "20200603000484959", key: "Fz6UttgcMXATCddMMZW1"}
     }
 
+    /**
+     * 解除选择复制粘贴限制
+     */
     function disableSelect() {
         function hackClass(className) {
             for (const i of document.getElementsByClassName(className)) {
@@ -156,6 +182,11 @@
         hackItem(document);
     }
 
+    /**
+     * async风格的延迟
+     * @param time
+     * @returns {Promise<unknown>}
+     */
     async function delay(time) {
         return new Promise(resolve => {
             setTimeout(resolve, time)
@@ -262,6 +293,9 @@
         })
     }
 
+    /**
+     * 文章注入
+     */
     function article() {
         $('.con-left>.article').each(function () {
             $(this).prepend(`<button class="sk-tr-art sk-translate-btn sk-btn-p" >翻译</button>`)
@@ -284,7 +318,7 @@
                     .map(value => value.trim().replace(/\s+/g, ' ').replace('&nbsp;', ''))
                     .filter(value => value.length !== 0);
                 (async () => {
-                    for (let i=0; i<text.length; i++) {
+                    for (let i = 0; i < text.length; i++) {
                         const data = await translateAPI(text[i], 'en', 'zh')
                         $brs[i].before(`<span style="color: #5093df"><br/>${data[0].dst}</span>`)
                         await delay(1000);
@@ -300,6 +334,9 @@
         })
     }
 
+    /**
+     * 文章单选题注入
+     */
     function articleChoice() {
         $('.itest-need-layout').each(function () {
             if ($(this).find('span').length !== 0) {
@@ -318,7 +355,7 @@
                     .map(value => value.trim().replace(/\s+/g, ' ').replace('&nbsp;', ''))
                     .join('\n');
                 translateAPI(text, 'en', 'zh').then(value => {
-                    for (let i=0; i<value.length; i++) {
+                    for (let i = 0; i < value.length; i++) {
                         $spanList[i].append(`<label style="color: #5093df"><br/>${value[i].dst}</label>`)
                     }
                     $button.removeClass('sk-btn-p').addClass('sk-btn-g').html('清空');
@@ -331,10 +368,12 @@
             }
 
 
-
         })
     }
 
+    /**
+     * 解析听力题
+     */
     function listenTest() {
         $('.itest-hear-reslist-duration+.itest-ques').each(function () {
             const $this = $(this);
@@ -351,10 +390,14 @@
         })
     }
 
+    /**
+     * 初始化CSS
+     */
     function initCss() {
         const styleNode = document.createElement("style");
         styleNode.innerHTML = `
         .sk-float-btn {
+            z-index: 9999;
             position: fixed;
             bottom: 5%;
             right: 2%;
@@ -378,6 +421,7 @@
         }
 
         .sk-float-container {
+            z-index: 9999;
             position: absolute;
             width: 500px;
             height: 610px;
@@ -459,41 +503,41 @@
         }
         `;
         document.head.appendChild(styleNode);
-    }
-    $('body').append(`
-    <div class="sk-float-btn">
-        <span>译</span>
-        <div class="sk-float-container">
-            <div class="sk-form">
-                <div class="sk-form-item">
-                    <p>翻译助手</p>
-                </div>
-                <div class="sk-form-item">
-                    <button class="sk-btn-p sk-translate-btn btn-e-z">英 → 汉</button>
-                    <button class="sk-btn-p sk-translate-btn btn-z-e">汉 → 英</button>
-                </div>
-                <div class="sk-form-item">
-                    <textarea id="sk-tx-f" class="sk-form-or" placeholder="等待翻译中..."></textarea>
-                </div>
-                <div class="sk-form-item">
-                    <textarea id="sk-tx-t" class="sk-form-tr" readonly></textarea>
+        $('body').append(`
+            <div class="sk-float-btn">
+                <span>译</span>
+                <div class="sk-float-container">
+                    <div class="sk-form">
+                        <div class="sk-form-item">
+                            <p>翻译助手</p>
+                        </div>
+                        <div class="sk-form-item">
+                            <button class="sk-btn-p sk-translate-btn btn-e-z">英 → 汉</button>
+                            <button class="sk-btn-p sk-translate-btn btn-z-e">汉 → 英</button>
+                        </div>
+                        <div class="sk-form-item">
+                            <textarea id="sk-tx-f" class="sk-form-or" placeholder="等待翻译中..."></textarea>
+                        </div>
+                        <div class="sk-form-item">
+                            <textarea id="sk-tx-t" class="sk-form-tr" readonly></textarea>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-    `)
-    $('.btn-e-z').on('click', function () {
-        translateAPI($('#sk-tx-f').val(), 'en', 'zh').then(value => {
-            $('#sk-tx-t').val(value.map(value => value.dst).join(""))
+        `)
+        $('.btn-e-z').on('click', function () {
+            translateAPI($('#sk-tx-f').val(), 'en', 'zh').then(value => {
+                $('#sk-tx-t').val(value.map(value => value.dst).join(""))
+            })
         })
-    })
-    $('.btn-z-e').on('click', function () {
-        translateAPI($('#sk-tx-f').val(), 'zh', 'en').then(value => {
-            $('#sk-tx-t').val(value.map(value => value.dst).join(""))
+        $('.btn-z-e').on('click', function () {
+            translateAPI($('#sk-tx-f').val(), 'zh', 'en').then(value => {
+                $('#sk-tx-t').val(value.map(value => value.dst).join(""))
+            })
         })
-    })
-    $('.sk-float-btn span').on('click', function () {
-        const $float = $('.sk-float-container');
-        $float.css('display', $float.css('display') === 'none'? 'block': 'none')
-    })
+        $('.sk-float-btn span').on('click', function () {
+            const $float = $('.sk-float-container');
+            $float.css('display', $float.css('display') === 'none' ? 'block' : 'none')
+        })
+    }
 })()
