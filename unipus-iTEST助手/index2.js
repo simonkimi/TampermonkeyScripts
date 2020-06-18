@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unipus iTEST助手
 // @namespace    http://blog.z31.xyz/
-// @version      2.1.4
+// @version      3.0.0
 // @description  自动翻译文章题目材料, 解析听力材料无限听, 内置翻译助手英汉互译, 解除切屏限制, 解除右键菜单与划词限制
 // @author       simonkimi
 // @match        *://*/*
@@ -11,6 +11,17 @@
 (async () => {
     'use strict';
     await delay(2000);
+
+    /**
+     * 强烈建议自己申请百度翻译api, 免费的
+     * 地址: https://api.fanyi.baidu.com/product/11
+     * 否则过多人同时使用导致接口反应缓慢, 甚至错误代码
+     * @type {{appid: string, key: string}}
+     */
+    const SETTING = {
+        appid: "20200604000485252",  // 自己申请的APPID
+        key: "pNz3PfHcz_65fwPV_SYh" // 自己申请的key
+    } // 不改也行, 就是会卡点
 
     if (isItest()) {
         initCss();
@@ -34,12 +45,7 @@
      * @returns {boolean}
      */
     function isItest() {
-        return document.title.indexOf("iTEST") !== -1 && document.getElementById('all-content') !== null;
-    }
-
-    function getLocalStore(key) {
-        const store = window.localStorage;
-        return store.getItem()
+        return document.getElementById('all-content') !== null;
     }
 
 
@@ -48,7 +54,7 @@
      */
     function debug() {
         if (window.location.href.indexOf("localhost") !== -1) {
-            $('body').append(`<script src="https://cdn.staticfile.org/blueimp-md5/2.16.0/js/md5.min.js"></script>`)
+            $("head").append(`<script> src="https://cdn.staticfile.org/blueimp-md5/2.16.0/js/md5.min.js"</script>`)
             $('.goup').removeClass('dis').on('click', function () {
                 $('.itest-ques-set').each(function () {
                     const $this = $(this);
@@ -74,6 +80,7 @@
                             $this.css('display', 'none')
                         } else if ($this.parent().next().is('.itest-section')) {
                             $this.parent().next().css('display', 'block')
+                            $($this.parent().next().find(".itest-ques-set")[0]).css('display', 'block')
                             $this.parent().css('display', 'none')
                         }
                         return false;
@@ -97,10 +104,10 @@
                 url: "https://api.fanyi.baidu.com/api/trans/vip/translate",
                 dataType: "jsonp",
                 data: obj,
-                success: function (data) {
+                success(data) {
                     resolve(data)
                 },
-                error: function () {
+                error() {
                     reject();
                 }
             });
@@ -159,7 +166,7 @@
      * @returns {{appid: string, key: string}}
      */
     function getBaiduAPIKey() {
-        return {appid: SETTINGS.appid, key: SETTINGS.key}
+        return {appid: SETTING.appid, key: SETTING.key}
     }
 
     /**
@@ -221,7 +228,7 @@
                 const p = selectOption.map(value => value.text().replace('\n', '')).join('\n');
                 translateAPI(p, 'en', 'zh').then(value => {
                     for (let i = 0; i < value.length; i++) {
-                        selectOption[i].append(`<span style="color: #5093df"><br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${value[i].dst}</span>`)
+                        selectOption[i].append(`<span class="sk-tr-text"><br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${value[i].dst}</span>`)
                     }
                     $(this).removeClass('sk-btn-p').addClass('sk-btn-g').html('清空');
                 })
@@ -252,7 +259,7 @@
                 const passage = $passage.text().replace(/\s+/g, ' ');
                 translateAPI(passage, 'en', 'zh').then(value => {
                     value.forEach(i => {
-                        $passage.append(`<span style="color: #5093df"><br><br>${i.dst}</span>`)
+                        $passage.append(`<span class="sk-tr-text"><br><br>${i.dst}</span>`)
                     })
                     $button.removeClass('sk-btn-p').addClass('sk-btn-g').html('清空');
                 })
@@ -284,7 +291,7 @@
                 const data = wordList.map(value => value.text().replace(/\s+/g, ' ')).join('\n');
                 translateAPI(data, 'en', 'zh').then(value => {
                     for (let i = 0; i < value.length; i++) {
-                        wordList[i].append(`<span style="color: #5093df"><br/>${value[i].dst}</span>`)
+                        wordList[i].append(`<span class="sk-tr-text"><br/>${value[i].dst}</span>`)
                     }
                     $button.removeClass('sk-btn-p').addClass('sk-btn-g').html('清空');
                 })
@@ -312,7 +319,27 @@
                 $(this).parent().find('span').each(function () {
                     $(this).remove();
                 })
-
+                const $article = $(this).parent().find("p, div");
+                $article.each(function () {
+                    $(this).children('br:even').remove();
+                    $(this).append('<br>')
+                    const $brs = [];
+                    $(this).children('br').each(function () {
+                        $brs.push($(this));
+                    })
+                    const text = $(this).html()
+                        .split('<br>')
+                        .map(value => value.trim().replace(/\s+/g, ' ').replace('&nbsp;', ''))
+                        .filter(value => value.length !== 0);
+                    (async () => {
+                        for (let i = 0; i < text.length; i++) {
+                            const data = await translateAPI(text[i], 'en', 'zh')
+                            $brs[i].before(`<span class="sk-tr-text"><br/>${data[0].dst}</span>`)
+                            await delay(1000);
+                        }
+                        $button.removeClass('sk-btn-p').addClass('sk-btn-g').html('清空');
+                    })()
+                })
             } else {
                 $(this).removeClass('sk-btn-g').addClass('sk-btn-p').html('翻译');
                 $(this).parent().find('span').each(function () {
@@ -344,7 +371,7 @@
                     .join('\n');
                 translateAPI(text, 'en', 'zh').then(value => {
                     for (let i = 0; i < value.length; i++) {
-                        $spanList[i].append(`<label style="color: #5093df"><br/>${value[i].dst}</label>`)
+                        $spanList[i].append(`<label class="sk-tr-text"><br/>${value[i].dst}</label>`)
                     }
                     $button.removeClass('sk-btn-p').addClass('sk-btn-g').html('清空');
                 })
@@ -382,141 +409,108 @@
      * 初始化CSS
      */
     function initCss() {
-        $('head').append(`
-            <style>
-                .sk-float-btn {
-                    z-index: 9999;
-                    position: fixed;
-                    bottom: 5%;
-                    right: 2%;
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 50%;
-                    background-color: #00a7c8;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);
-                    cursor: pointer;
-                }
-        
-                .sk-float-btn span {
-                    display: inline-block;
-                    width: 40px;
-                    line-height: 40px;
-                    color: #fff;
-                    text-align: center;
-                    font-size: 20px;
-                    user-select: none;
-                    cursor: pointer;
-                }
-        
-                .sk-float-container {
-                    display: block;
-                    cursor: auto;
-                    z-index: 9999;
-                    position: absolute;
-                    width: 500px;
-                    height: 610px;
-                    left: -500px;
-                    top: -610px;
-                    background: #FAFAFA;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04)
-                }
-        
-                .sk-form {
-                    width: 97%;
-                }
-        
-                .sk-form-item {
-                    margin: 5px 20px;
-                }
-        
-        
-                .sk-translate-tx {
-                    width: 100%;
-                    height: 250px;
-                    resize: none;
-                    border: none;
-                }
-        
-                .sk-form-item .sk-form-or {
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, 0.04)
-                }
-        
-                .sk-form-item .sk-form-tr {
-                    background-color: #EEEEEE;
-                }
-        
-                .sk-form-item p {
-                    width: 100%;
-                    text-align: center;
-                    padding: 0;
-                    margin: 5px 0;
-                    font-size: 18px;
-                }
-        
-        
-                .sk-form-item textarea {
-                    padding: 5px 10px;
-                }
-        
-                .sk-form-item label {
-                    display: inline-block;
-                    width: 70px;
-                    font-size: 15px;
-                }
-        
-                .sk-form-item input {
-                    margin-left: 10px;
-                    width: 70%;
-                    border-radius: 4px;
-                    border: 1px solid #dcdfe6;
-                    transition: border-color .2s cubic-bezier(.645, .045, .355, 1);
-                    padding: 2px 5px;
-                }
-        
-                .sk-form-item .desc {
-                    font-size: 14px;
-                    color: #909399;
-                }
-        
-                .sk-form-item input:focus {
-                    outline: none;
-                    border-color: #409eff;
-                }
-        
-                .sk-translate-btn {
-                    color: #fff;
-                    padding: 5px 10px;
-                    border-radius: 20px;
-                    cursor: pointer;
-                }
-        
-                .sk-btn-p {
-                    background-color: #409eff;
-                    border: 1px solid #409eff;
-                }
-        
-                .sk-btn-p:hover {
-                    background-color: rgb(102, 177, 255);
-                    border: 1px solid rgb(102, 177, 255);
-                }
-        
-                .sk-btn-g {
-                    background-color: #909399;
-                    border: 1px solid #909399;
-                }
-        
-                .sk-btn-g:hover {
-                    background-color: rgb(166, 169, 173);
-                    border: 1px solid rgb(166, 169, 173);
-                }
-        
-                .sk-form-translate {
-                    display: none;
-                }
-        </style>`)
-        $('body').append(`
-            <div class="sk-float-btn">
-                <span>译</span>
+        $("head").append(`
+        <style>
+            .sk-float-btn {
+                border-right:2px #dcdcdc solid;
+                
+            }
+            
+            .sk-float-btn a {
+                user-select: none;
+                cursor: pointer;
+            }
+    
+            .sk-float-container {
+                z-index: 9999;
+                position: absolute;
+                width: 500px;
+                height: 610px;
+                left: 500px;
+                top: -610px;
+                background: #FAFAFA;
+                display: none;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04)
+            }
+    
+            .sk-form-item {
+                margin: 5px 20px;
+            }
+    
+            .sk-form-item p {
+                width: 100%;
+                text-align: center;
+                padding: 0;
+                margin: 5px 0;
+            }
+    
+            .sk-form-item label {
+                display: inline-block;
+                width: 50px;
+            }
+    
+            .sk-form-item .sk-form-or {
+                width: 97%;
+                height: 250px;
+                resize: none;
+                border: none;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, 0.04)
+            }
+    
+            .sk-form-item .sk-form-tr {
+                width: 97%;
+                height: 250px;
+                resize: none;
+                border: none;
+                background-color: #EEEEEE;
+            }
+    
+            .sk-form-item p {
+                font-size: 18px;
+                text-align: center;
+                width: 100%;
+            }
+    
+            .sk-form-item textarea {
+                padding: 5px 10px;
+            }
+    
+            .sk-translate-btn {
+                color: #fff;
+                padding: 5px 10px;
+                border-radius: 20px;
+                cursor: pointer;
+                opacity: 0.1;
+            }
+    
+            .sk-btn-p {
+                background-color: #409eff;
+                border: 1px solid #409eff;
+            }
+    
+            .sk-btn-p:hover {
+                background-color: rgb(102, 177, 255);
+                border: 1px solid rgb(102, 177, 255);
+            }
+    
+            .sk-btn-g {
+                background-color: #909399;
+                border: 1px solid #909399;
+            }
+    
+            .sk-btn-g:hover {
+                background-color: rgb(166, 169, 173);
+                border: 1px solid rgb(166, 169, 173);
+            }
+            
+            .sk-tr-text {
+                color: #000000;
+            }
+            </style>
+        `)
+        $('#footer .right').append(`
+            <li class="sk-float-btn">
+                <a>翻译</a>
                 <div class="sk-float-container">
                     <div class="sk-form">
                         <div class="sk-form-item">
@@ -525,29 +519,28 @@
                         <div class="sk-form-item">
                             <button class="sk-btn-p sk-translate-btn btn-e-z">英 → 汉</button>
                             <button class="sk-btn-p sk-translate-btn btn-z-e">汉 → 英</button>
-                            <button class="sk-btn-p sk-translate-btn">设置</button>
                         </div>
                         <div class="sk-form-item">
-                            <textarea id="sk-tx-f" class="sk-form-or" placeholder="等待翻译中..."></textarea>
+                            <textarea class="sk-form-or sk-tx-f" placeholder="等待翻译中..."></textarea>
                         </div>
                         <div class="sk-form-item">
-                            <textarea id="sk-tx-t" class="sk-form-tr" readonly></textarea>
+                            <textarea class="sk-form-tr sk-tx-t" readonly></textarea>
                         </div>
                     </div>
                 </div>
-            </div>
+            </li>
         `)
         $('.btn-e-z').on('click', function () {
-            translateAPI($('#sk-tx-f').val(), 'en', 'zh').then(value => {
-                $('#sk-tx-t').val(value.map(value => value.dst).join(""))
+            translateAPI($('.sk-tx-f').val(), 'en', 'zh').then(value => {
+                $('.sk-tx-t').val(value.map(value => value.dst).join(""))
             })
         })
         $('.btn-z-e').on('click', function () {
-            translateAPI($('#sk-tx-f').val(), 'zh', 'en').then(value => {
-                $('#sk-tx-t').val(value.map(value => value.dst).join(""))
+            translateAPI($('.sk-tx-f').val(), 'zh', 'en').then(value => {
+                $('.sk-tx-t').val(value.map(value => value.dst).join(""))
             })
         })
-        $('.sk-float-btn span').on('click', function () {
+        $('.sk-float-btn a').on('click', function () {
             const $float = $('.sk-float-container');
             $float.css('display', $float.css('display') === 'none' ? 'block' : 'none')
         })
