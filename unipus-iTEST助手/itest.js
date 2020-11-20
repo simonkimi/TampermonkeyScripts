@@ -81,26 +81,26 @@
     function fuckAJAX() {
         window.fetch = () => new Promise((resolve) => {resolve()})
         fetch = () => new Promise((resolve) => {resolve()})
-        // Object.defineProperty($, 'ajax', {
-        //     get: () => (obj) => {
-        //         const data = JSON.parse(obj.data)
-        //         const allow = data.filter(value => {
-        //             const action = value.action
-        //             return ['pairwork_exam', 'res_download_start', 'next_ques_click', 'pre_ques_click',
-        //                 'ans_submit', 'exam_end', 'ans_card_click', 'ans_auto_submit', 'exam_begin', 'res_download_end',
-        //                 'down_audio_error'].includes(action);
-        //         })
-        //         if (allow.length === 1 && data.length === 1) {
-        //             console.log("上报信息成功")
-        //             SETTING.AJAX(obj)
-        //         } else {
-        //             console.log("上报信息不在白名单内, 已被阻断!")
-        //             obj.success()
-        //         }
-        //
-        //     },
-        //     set: () => {console.log("无事发生")}
-        // })
+        Object.defineProperty($, 'ajax', {
+            get: () => (obj) => {
+                const data = JSON.parse(obj.data)
+                const allow = data.filter(value => {
+                    const action = value.action
+                    return ['pairwork_exam', 'res_download_start', 'next_ques_click', 'pre_ques_click',
+                        'ans_submit', 'exam_end', 'ans_card_click', 'ans_auto_submit', 'exam_begin', 'res_download_end',
+                        'down_audio_error'].includes(action);
+                })
+                if (allow.length === 1 && data.length === 1) {
+                    console.log("上报信息成功")
+                    SETTING.AJAX(obj)
+                } else {
+                    console.log("上报信息不在白名单内, 已被阻断!")
+                    obj.success()
+                }
+
+            },
+            set: () => {console.log("无事发生")}
+        })
     }
 
 
